@@ -1,0 +1,6 @@
+{
+  "name": "Sistem Monitoring Kontingen KONI Kota Bandung – PORPROV XV Jabar 2026",
+  "description": "Sistem informasi terintegrasi monitoring kontingen KONI Kota Bandung pada PORPROV XV Jawa Barat 2026: jadwal, hasil pertandingan, medali, posko, medis, logistik, dan laporan.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

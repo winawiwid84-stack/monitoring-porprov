@@ -1,0 +1,1807 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Monitoring Kontingen KONI Kota Bandung – PORPROV XV Jabar 2026</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.25s ease-out forwards; }
+    </style>
+</head>
+<body class="h-full bg-slate-100 text-slate-800 antialiased flex flex-col overflow-hidden">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Main App Container -->
+    <div id="app" class="h-full flex flex-col w-full">
+        <!-- Rendered dynamically -->
+    </div>
+
+    <script>
+        // --- DATABASE & STATE MANAGEMENT ---
+        const DEFAULT_DB = {
+            app_settings: {
+                total_sports: 78,
+                total_events_overall: 1156,
+                total_events_participated: 911,
+                total_athletes: 1366,
+                total_coaches: 307,
+                total_officials: 161,
+                total_managers: 86,
+                total_contingent: 1920,
+                target_gold_potential: 171,
+                target_silver_bronze_potential: 76,
+                target_label: "Target Medali Emas & Potensi Utama Kontingen (Diverifikasi Admin)"
+            },
+            sports: [
+                { id: 1, name: "Atletik", venue: "Stadion Pakansari Bogor", athletes_count: 45, status: "Aktif" },
+                { id: 2, name: "Renang", venue: "Kolam Renang Jatinangor", athletes_count: 32, status: "Aktif" },
+                { id: 3, name: "Bulu Tangkis", venue: "GOR Bima Cirebon", athletes_count: 24, status: "Aktif" },
+                { id: 4, name: "Pencak Silat", venue: "GOR Laga Satria Bekasi", athletes_count: 38, status: "Aktif" },
+                { id: 5, name: "Sepak Bola / Futsal", venue: "Stadion Patriot Candrabhaga", athletes_count: 54, status: "Aktif" },
+                { id: 6, name: "Tinju", venue: "GOR Indoor Bogor", athletes_count: 18, status: "Aktif" },
+                { id: 7, name: "Karate", venue: "Sabuga ITB Bandung", athletes_count: 26, status: "Aktif" }
+            ],
+            venues: [
+                { id: 1, name: "Stadion Patriot Candrabhaga", region: "Kota Bekasi", category: "Utama / Pembukaan", capacity: "30,000", status: "Siap" },
+                { id: 2, name: "GOR Laga Satria", region: "Kota Bekasi", category: "Bela Diri", capacity: "3,500", status: "Siap" },
+                { id: 3, name: "Stadion Pakansari", region: "Kab. Bogor", category: "Atletik & Sepak Bola", capacity: "30,000", status: "Siap" },
+                { id: 4, name: "GOR Padjajaran", region: "Kota Bogor", category: "Indoor Games", capacity: "4,000", status: "Siap" },
+                { id: 5, name: "Sabuga ITB", region: "Kota Bandung", category: "Bela Diri", capacity: "2,500", status: "Siap" },
+                { id: 6, name: "Kolam Renang Jatinangor", region: "Kab. Sumedang",category: "Akuatik", capacity: "2,000", status: "Siap" }
+            ],
+            posts: [
+                { id: 1, name: "Posko Utama & Korwil Bekasi", location: "Asrama Haji Kota Bekasi", coordinator: "H. Dadan S., M.Si", contact: "0812-3456-7890", status: "Aktif" },
+                { id: 2, name: "Posko Korwil Depok", location: "Asrama Haji Depok Transit", coordinator: "Siti Rahma, S.Pd", contact: "0813-9876-5432", status: "Aktif" },
+                { id: 3, name: "Posko Korwil Bogor", location: "House Tell Hotel Bogor", coordinator: "Budi Santoso, ST", contact: "0811-2233-4455", status: "Aktif" },
+                { id: 4, name: "Posko Kontingen Bandung", location: "Kantor KONI Kota Bandung", coordinator: "Riki Setiawan, SE", contact: "0821-5566-7788", status: "Aktif" }
+            ],
+            athletes: [
+                { id: 101, name: "Rian Maulana", sport_id: 1, gender: "Putra", birthdate: "2002-05-12", club: "PASI Bandung", status: "Aktif" },
+                { id: 102, name: "Dewi Lestari", sport_id: 1, gender: "Putri", birthdate: "2004-08-21", club: "Golden Athletics", status: "Aktif" },
+                { id: 103, name: "Fajar Alfian Jr", sport_id: 3, gender: "Putra", birthdate: "2001-03-15", club: "PB SGS Bandung", status: "Aktif" },
+                { id: 104, name: "Mega Putri", sport_id: 4, gender: "Putri", birthdate: "2003-11-02", club: "Perisai Diri Bandung", status: "Aktif" },
+                { id: 105, name: "Yoga Pratama", sport_id: 2, gender: "Putra", birthdate: "2005-01-30", club: "Bandung Aquatik Club", status: "Aktif" }
+            ],
+            fixtures: [
+                { id: 1, sport_id: 1, event_name: "Lari 100m Putra - Final", team_a: "Rian Maulana (Bandung)", team_b: "Atlet Kab. Bekasi", date: "2026-11-08", time: "09:30", venue: "Stadion Pakansari Bogor", status: "Selesai", result: "Medali Emas (Rian M.)", source: "Official Schedule Jabar" },
+                { id: 2, sport_id: 3, event_name: "Ganda Putra Bulu Tangkis - Semifinal", team_a: "Fajar / Yoga (Bandung)", team_b: "Pasangan Cimahi", date: "2026-11-10", time: "14:00", venue: "GOR Bima Cirebon", status: "Berlangsung", result: "Skor 21-19, 18-14 (On-going)", source: "Live Scoring POSKO" },
+                { id: 3, sport_id: 4, event_name: "Tanding Kelas A Putra Pencak Silat", team_a: "Mega Putri (Bandung)", team_b: "Pesilat Depok", date: "2026-11-12", time: "10:15", venue: "GOR Laga Satria Bekasi", status: "Terjadwal", result: "Belum Dimulai", source: "Technical Delegate" },
+                { id: 4, sport_id: 2, event_name: "Renang Gaya Bebas 50m Putri", team_a: "Siti Nurhaliza (Bandung)", team_b: "Perenang Bogor", date: "2026-11-09", time: "11:00", venue: "Kolam Renang Jatinangor", status: "Selesai", result: "Medali Perunggu", source: "Panitia PB PORPROV" }
+            ],
+            medals: [
+                { id: 1, sport_id: 1, event_name: "Lari 100m Putra", athlete_name: "Rian Maulana", type: "Emas", date: "2026-11-08", verified: true },
+                { id: 2, sport_id: 2, event_name: "Renang Gaya Bebas 50m Putri", athlete_name: "Siti Nurhaliza", type: "Perunggu", date: "2026-11-09", verified: true },
+                { id: 3, sport_id: 4, event_name: "Seni Tunggal Putri Silat", athlete_name: "Mega Putri", type: "Perak", date: "2026-11-07", verified: false }
+            ],
+            daily_reports: [
+                { id: 1, post_id: 1, reporter: "H. Dadan S.", date: "2026-11-08", activity: "Pengecekan kedatangan atlet cabor atletik berjalan lancar di Asrama Haji.", constraints: "Keterlambatan bus jemputan 15 menit.", status: "Selesai", followup: "Koordinasi ulang vendor transport.", photo: "https://placehold.co/600x400/3b82f6/ffffff?text=Kunjungan+Posko+Bekasi" },
+                { id: 2, post_id: 3, reporter: "Budi Santoso", date: "2026-11-09", activity: "Monitoring venue GOR Padjajaran Bogor dan kondisi mess atlet.", constraints: "AC kamar 204 kurang dingin.", status: "Diproses", followup: "Teknisi hotel sedang memperbaiki.", photo: "https://placehold.co/600x400/10b981/ffffff?text=Venue+GOR+Bogor" }
+            ],
+            medical_cases: [
+                { id: 1, athlete_name: "Rian Maulana", sport: "Atletik", urgency: "Ringan", diagnosis: "Kram otot betis ringan", treatment: "Peregangan dan spray pendingin", officer: "Dr. Aris (Tim Medis)", date: "2026-11-08 14:30", status: "Pemulihan" },
+                { id: 2, athlete_name: "Yoga Pratama", sport: "Renang", urgency: "Sedang", diagnosis: "Iritasi mata ringan akibat kaporit", treatment: "Pemberian obat tetes mata & istirahat", officer: "Ns. Fitri", date: "2026-11-09 10:15", status: "Selesai" }
+            ],
+            accommodations: [
+                { id: 1, name: "Asrama Haji Kota Bekasi", region: "Kota Bekasi", capacity: 500, filled: 380, transport: "4 Bus & 6 Hiace", status: "Layak & Nyaman" },
+                { id: 2, name: "House Tell Hotel Bogor", region: "Kota Bogor", capacity: 300, filled: 240, transport: "3 Bus & 4 Hiace", status: "Layak & Nyaman" },
+                { id: 3, name: "Asrama Haji Transit Depok", region: "Kota Depok", capacity: 200, filled: 150, transport: "2 Bus & 3 Hiace", status: "Perlu Perbaikan AC" }
+            ],
+            protests: [
+                { id: 1, sport: "Pencak Silat", match_ref: "Partai #12 Kelas B", description: "Protes penilaian wasit juri pada ronde ke-2", reporter: "Official Cabor Silat", status: "Menunggu Keputusan Jury", resolution: "Menunggu sidang dewan hakim." }
+            ],
+            audit_logs: [
+                { id: 1, timestamp: "2026-10-28 08:00:00", user: "Admin Sistem", action: "Inisialisasi database awal sistem KONI Kota Bandung PORPROV XV 2026." }
+            ]
+        };
+
+        const dbManager = {
+            getDB() {
+                const data = localStorage.getItem('koni_bandung_porprov_2026_db');
+                if (!data) {
+                    localStorage.setItem('koni_bandung_porprov_2026_db', JSON.stringify(DEFAULT_DB));
+                    return DEFAULT_DB;
+                }
+                return JSON.parse(data);
+            },
+            saveDB(db) {
+                localStorage.setItem('koni_bandung_porprov_2026_db', JSON.stringify(db));
+            },
+            logAudit(user, action) {
+                const db = this.getDB();
+                const now = new Date().toISOString().replace('T', ' ').substring(0, 19);
+                db.audit_logs.unshift({ id: Date.now(), timestamp: now, user: user.name + ` (${user.role_name})`, action });
+                this.saveDB(db);
+            }
+        };
+
+        // --- AUTHENTICATION STATE ---
+        const ROLES = {
+            ADMIN: { id: 'admin', name: 'Admin Sistem', role_name: 'Administrator', badge: 'bg-rose-500 text-white' },
+            CENTRAL: { id: 'central', name: 'Dr. H. Pengurus Pusat', role_name: 'Pengurus Pusat KONI', badge: 'bg-indigo-600 text-white' },
+            POST_COORDINATOR: { id: 'post_coord', name: 'Koordinator Posko Bekasi', role_name: 'Koordinator Posko', badge: 'bg-blue-600 text-white' },
+            MONITORING_TEAM: { id: 'monitoring_team', name: 'Tim Monitoring & Evaluasi', role_name: 'Tim Monitoring', badge: 'bg-violet-600 text-white' },
+            TECHNICAL: { id: 'technical', name: 'Tim Teknis Pertandingan', role_name: 'Tim Teknis', badge: 'bg-amber-600 text-white' },
+            MEDICAL: { id: 'medical', name: 'Tim Medis Kontingen (Dr. Aris)', role_name: 'Tim Medis', badge: 'bg-emerald-600 text-white' },
+            VIEWER: { id: 'viewer', name: 'Pimpinan / Tamu VIP', role_name: 'Viewer / Pimpinan', badge: 'bg-slate-600 text-white' }
+        };
+
+        let currentUser = ROLES.ADMIN;
+        let currentTab = 'dashboard';
+        let modalState = { isOpen: false, type: null, data: null };
+
+        function switchRole(roleKey) {
+            currentUser = ROLES[roleKey];
+            dbManager.logAudit(currentUser, `Berganti peran pengguna ke ${currentUser.role_name} (${currentUser.name})`);
+            showToast(`Berhasil beralih peran ke ${currentUser.name}`, 'success');
+            renderApp();
+        }
+
+        function switchTab(tabId) {
+            currentTab = tabId;
+            renderApp();
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const bgClass = type === 'success' ? 'bg-slate-900 text-white border-slate-800' : 'bg-rose-600 text-white border-rose-700';
+            toast.className = `pointer-events-auto px-4 py-3 rounded-xl shadow-xl text-xs font-semibold flex items-center gap-3 border animate-fade-in ${bgClass}`;
+            toast.innerHTML = `
+                <i data-lucide="${type === 'success' ? 'check-circle-2' : 'alert-circle'}" class="w-4 h-4 shrink-0"></i>
+                <span>${message}</span>
+            `;
+            container.appendChild(toast);
+            lucide.createIcons();
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // --- MODAL CONTROLLER ---
+        function openModal(type, data = null) {
+            modalState = { isOpen: true, type, data };
+            renderApp();
+        }
+
+        function closeModal() {
+            modalState = { isOpen: false, type: null, data: null };
+            renderApp();
+        }
+
+        // --- MAIN RENDER ROUTER ---
+        function renderApp() {
+            const db = dbManager.getDB();
+            const appEl = document.getElementById('app');
+
+            appEl.innerHTML = `
+                <!-- Top Header Navigation -->
+                <header class="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-40 shadow-md">
+                    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                        <!-- Logo & Title -->
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center font-black text-white shadow-md text-base tracking-wider">
+                                26
+                            </div>
+                            <div>
+                                <h1 class="font-extrabold text-sm sm:text-base tracking-tight text-white flex items-center gap-2">
+                                    KONI KOTA BANDUNG <span class="text-blue-400 text-xs px-2 py-0.5 rounded-full bg-blue-950/80 border border-blue-800/50">PORPROV XV JABAR 2026</span>
+                                </h1>
+                                <p class="text-[11px] text-slate-400 hidden sm:block">Sistem Monitoring Terpadu Kontingen (28 Okt - 20 Nov 2026)</p>
+                            </div>
+                        </div>
+
+                        <!-- Role Selector & User Badge -->
+                        <div class="flex items-center gap-3">
+                            <div class="hidden lg:flex flex-col items-end">
+                                <span class="text-xs font-bold text-slate-200">${currentUser.name}</span>
+                                <span class="text-[10px] text-blue-400 font-medium">${currentUser.role_name}</span>
+                            </div>
+                            <div class="relative">
+                                <select onchange="switchRole(this.value)" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs rounded-xl px-3 py-2 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-inner">
+                                    <option value="ADMIN" ${currentUser.id === 'admin' ? 'selected' : ''}>👤 Admin Sistem</option>
+                                    <option value="CENTRAL" ${currentUser.id === 'central' ? 'selected' : ''}>👔 Pengurus Pusat</option>
+                                    <option value="POST_COORDINATOR" ${currentUser.id === 'post_coord' ? 'selected' : ''}>🏢 Koordinator Posko</option>
+                                    <option value="MONITORING_TEAM" ${currentUser.id === 'monitoring_team' ? 'selected' : ''}>🔍 Tim Monitoring & Evaluasi</option>
+                                    <option value="TECHNICAL" ${currentUser.id === 'technical' ? 'selected' : ''}>⚡ Tim Teknis</option>
+                                    <option value="MEDICAL" ${currentUser.id === 'medical' ? 'selected' : ''}>🩺 Tim Medis (Akses Terbatas)</option>
+                                    <option value="VIEWER" ${currentUser.id === 'viewer' ? 'selected' : ''}>👁️ Viewer / Pimpinan</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </header>
+
+                <!-- Workspace Layout -->
+                <div class="flex-1 flex overflow-hidden">
+                    <!-- Sidebar Navigation -->
+                    <aside class="w-64 bg-slate-900 text-slate-300 border-r border-slate-800 hidden md:flex flex-col justify-between shrink-0">
+                        <div class="p-4 space-y-1 overflow-y-auto custom-scrollbar">
+                            <div class="text-[10px] uppercase font-bold tracking-wider text-slate-500 px-3 mb-2">Menu Utama</div>
+                            ${renderNavItem('dashboard', 'layout-dashboard', 'Dashboard')}
+                            ${renderNavItem('master', 'database', 'Master Data & Roster')}
+                            ${renderNavItem('fixtures', 'calendar', 'Jadwal & Hasil')}
+                            ${renderNavItem('posts', 'clipboard-list', 'Monitoring Posko')}
+                            ${renderNavItem('visit_photos', 'camera', 'Galeri & Foto Kunjungan')}
+                            ${renderNavItem('medals', 'award', 'Perolehan Medali')}
+                            ${renderNavItem('medical', 'heart-pulse', 'Medis & Kesehatan', currentUser.id === 'medical' || currentUser.id === 'admin' || currentUser.id === 'central' ? '' : 'opacity-75')}
+                            ${renderNavItem('accommodation', 'home', 'Penginapan & Transport')}
+                            ${renderNavItem('protests', 'shield-alert', 'Protes & Pelanggaran')}
+                            ${renderNavItem('reports', 'file-text', 'Laporan & Ekspor')}
+                            ${renderNavItem('database_doc', 'book-open', 'Dokumentasi & ERD')}
+                        </div>
+
+                        <!-- System Info Footer in Sidebar -->
+                        <div class="p-4 bg-slate-950/60 border-t border-slate-800 text-xs">
+                            <div class="flex items-center justify-between text-slate-400 mb-1">
+                                <span>Status Sistem:</span>
+                                <span class="flex items-center gap-1.5 text-emerald-400 font-semibold"><span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Online</span>
+                            </div>
+                            <p class="text-[10px] text-slate-500">Pembaruan Terakhir: Hari ini, 07:23 WIB</p>
+                        </div>
+                    </aside>
+
+                    <!-- Main Content Area -->
+                    <main class="flex-1 flex flex-col min-w-0 overflow-y-auto custom-scrollbar bg-slate-100">
+                        <!-- Mobile Tabs Header -->
+                        <div class="bg-white border-b border-slate-200 p-2 flex md:hidden overflow-x-auto gap-2 shrink-0">
+                            ${renderMobileTabBtn('dashboard', 'Dashboard')}
+                            ${renderMobileTabBtn('master', 'Master')}
+                            ${renderMobileTabBtn('fixtures', 'Jadwal')}
+                            ${renderMobileTabBtn('posts', 'Posko')}
+                            ${renderMobileTabBtn('visit_photos', 'Foto')}
+                            ${renderMobileTabBtn('medals', 'Medali')}
+                            ${renderMobileTabBtn('medical', 'Medis')}
+                            ${renderMobileTabBtn('accommodation', 'Inap')}
+                            ${renderMobileTabBtn('protests', 'Protes')}
+                            ${renderMobileTabBtn('reports', 'Laporan')}
+                            ${renderMobileTabBtn('database_doc', 'ERD')}
+                        </div>
+
+                        <!-- Tab Active Content Container -->
+                        <div class="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full flex-1">
+                            ${renderTabContent(db, currentTab)}
+                        </div>
+                    </main>
+                </div>
+
+                <!-- Floating AI Chatbot Widget -->
+                <div class="fixed bottom-6 right-6 z-50">
+                    <div id="chat-widget-container" class="hidden flex flex-col bg-white rounded-2xl shadow-2xl border border-slate-200 w-80 sm:w-96 h-[480px] overflow-hidden animate-fade-in">
+                        <!-- Chat Header -->
+                        <div class="bg-slate-900 text-white p-4 flex justify-between items-center">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center font-bold text-white text-xs">
+                                    AI
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-xs text-white">Asisten AI Keolahragaan KONI</h4>
+                                    <span class="text-[10px] text-emerald-400 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Siap Menjawab</span>
+                                </div>
+                            </div>
+                            <button onclick="toggleChatbot()" class="text-slate-400 hover:text-white text-sm font-bold">✕</button>
+                        </div>
+                        <!-- Chat Messages Container -->
+                        <div id="chat-messages" class="flex-1 p-4 overflow-y-auto space-y-3 bg-slate-50 text-xs custom-scrollbar">
+                            <div class="flex gap-2">
+                                <div class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-[10px] shrink-0">AI</div>
+                                <div class="bg-white p-3 rounded-2xl border border-slate-200 text-slate-700 shadow-xs max-w-[80%]">
+                                    Halo! Saya adalah Asisten AI KONI Kota Bandung. Ada yang bisa saya bantu terkait jadwal PORPROV XV Jabar 2026, peraturan cabor, atau data kontingen?
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Chat Input -->
+                        <div class="p-3 bg-white border-t border-slate-200 flex gap-2">
+                            <input type="text" id="chat-input" placeholder="Tanyakan seputar keolahragaan..." onkeydown="if(event.key==='Enter') sendChatMessage()" class="flex-1 px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <button onclick="sendChatMessage()" class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow transition">Kirim</button>
+                        </div>
+                    </div>
+                    <!-- Chat Toggle Button -->
+                    <button id="chat-toggle-btn" onclick="toggleChatbot()" class="w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-xl flex items-center justify-center transition hover:scale-105">
+                        <i data-lucide="message-square-code" class="w-6 h-6"></i>
+                    </button>
+                </div>
+
+                <!-- Global Dynamic Modal Container -->
+                ${renderModalContainer()}
+            `;
+
+            lucide.createIcons();
+        }
+
+        // --- CHATBOT LOGIC ---
+        let isChatOpen = false;
+        function toggleChatbot() {
+            isChatOpen = !isChatOpen;
+            const container = document.getElementById('chat-widget-container');
+            const btn = document.getElementById('chat-toggle-btn');
+            if (isChatOpen) {
+                container.classList.remove('hidden');
+                btn.classList.add('hidden');
+            } else {
+                container.classList.add('hidden');
+                btn.classList.remove('hidden');
+            }
+        }
+
+        async function sendChatMessage() {
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            if (!text) return;
+
+            const messagesContainer = document.getElementById('chat-messages');
+            
+            // Append user message
+            messagesContainer.innerHTML += `
+                <div class="flex gap-2 justify-end">
+                    <div class="bg-blue-600 text-white p-3 rounded-2xl shadow-xs max-w-[80%]">
+                        ${escapeHtml(text)}
+                    </div>
+                </div>
+            `;
+            input.value = '';
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            // Append typing indicator
+            const typingId = 'typing-' + Date.now();
+            messagesContainer.innerHTML += `
+                <div id="${typingId}" class="flex gap-2">
+                    <div class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-[10px] shrink-0">AI</div>
+                    <div class="bg-white p-3 rounded-2xl border border-slate-200 text-slate-500 shadow-xs">
+                        Sedang berpikir...
+                    </div>
+                </div>
+            `;
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            try {
+                const systemPrompt = "Anda adalah Asisten AI resmi untuk Sistem Monitoring Kontingen KONI Kota Bandung pada PORPROV XV Jawa Barat 2026. Jawablah pertanyaan seputar keolahragaan, regulasi pertandingan, informasi cabor, jadwal, dan kontingen KONI Kota Bandung dengan ramah, profesional, dan akurat dalam bahasa Indonesia.";
+                const apiKey = "";
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+                
+                const payload = {
+                    contents: [{ parts: [{ text: text }] }],
+                    systemInstruction: { parts: [{ text: systemPrompt }] }
+                };
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                const reply = result?.candidates?.[0]?.content?.parts?.[0]?.text || "Maaf, saya tidak dapat memproses jawaban saat ini.";
+
+                document.getElementById(typingId).remove();
+                messagesContainer.innerHTML += `
+                    <div class="flex gap-2">
+                        <div class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-[10px] shrink-0">AI</div>
+                        <div class="bg-white p-3 rounded-2xl border border-slate-200 text-slate-700 shadow-xs max-w-[80%] leading-relaxed">
+                            ${escapeHtml(reply)}
+                        </div>
+                    </div>
+                `;
+            } catch (err) {
+                document.getElementById(typingId).remove();
+                messagesContainer.innerHTML += `
+                    <div class="flex gap-2">
+                        <div class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-[10px] shrink-0">AI</div>
+                        <div class="bg-white p-3 rounded-2xl border border-slate-200 text-rose-600 shadow-xs max-w-[80%]">
+                            Maaf, terjadi kendala koneksi ke server AI. Silakan coba lagi.
+                        </div>
+                    </div>
+                `;
+            }
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function escapeHtml(string) {
+            return String(string).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        function renderNavItem(id, icon, label, extraClass = '') {
+            const active = currentTab === id;
+            return `
+                <button onclick="switchTab('${id}')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition text-left ${active ? 'bg-blue-600 text-white shadow-md' : 'hover:bg-slate-800/70 text-slate-400 hover:text-slate-200'} ${extraClass}">
+                    <i data-lucide="${icon}" class="w-4 h-4 shrink-0"></i>
+                    <span>${label}</span>
+                </button>
+            `;
+        }
+
+        function renderMobileTabBtn(id, label) {
+            const active = currentTab === id;
+            return `
+                <button onclick="switchTab('${id}')" class="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition ${active ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}">
+                    ${label}
+                </button>
+            `;
+        }
+
+        // --- MODULE 1: DASHBOARD ---
+        function renderDashboard(db) {
+            const s = db.app_settings;
+            const pendingIssues = db.daily_reports.filter(r => r.status !== 'Selesai').length;
+            const ongoingMatches = db.fixtures.filter(f => f.status === 'Berlangsung').length;
+            const totalGold = db.medals.filter(m => m.type === 'Emas').length;
+            const totalSilver = db.medals.filter(m => m.type === 'Perak').length;
+            const totalBronze = db.medals.filter(m => m.type === 'Perunggu').length;
+
+            return `
+                <div class="space-y-6">
+                    <!-- Top Announcement Banner -->
+                    <div class="bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 rounded-2xl p-6 text-white shadow-lg border border-blue-900/40 relative overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div class="relative z-10 space-y-1">
+                            <span class="inline-block px-3 py-1 bg-blue-600/40 border border-blue-400/30 text-blue-300 text-[10px] font-bold uppercase tracking-wider rounded-full mb-1">
+                                PORPROV XV JABAR 2026 • 28 OKT - 20 NOV 2026
+                            </span>
+                            <h2 class="text-xl sm:text-2xl font-extrabold tracking-tight">Kontingen KONI Kota Bandung</h2>
+                            <p class="text-xs text-slate-300 max-w-2xl leading-relaxed">
+                                Pembukaan: 7 Nov 2026 di Kota Bekasi • Penutupan: 20 Nov 2026 di Kota Bogor. Memantau ${s.total_sports} Cabang Olahraga dan ${s.total_athletes} Atlet.
+                            </p>
+                        </div>
+                        <div class="relative z-10 flex gap-2 shrink-0">
+                            <button onclick="openModal('monitoring_form')" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md transition flex items-center gap-2">
+                                <i data-lucide="plus-circle" class="w-4 h-4"></i> Buat Laporan Posko
+                            </button>
+                            <button onclick="switchTab('reports')" class="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition backdrop-blur-sm border border-white/10 flex items-center gap-2">
+                                <i data-lucide="download" class="w-4 h-4"></i> Ekspor Ringkasan
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Statistics Grid -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition">
+                            <div class="flex items-center justify-between text-slate-500 mb-2">
+                                <span class="text-xs font-bold uppercase tracking-wider">Total Atlet & Kontingen</span>
+                                <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                                    <i data-lucide="users" class="w-5 h-5"></i>
+                                </div>
+                            </div>
+                            <span class="text-2xl font-black text-slate-900">${s.total_athletes} <span class="text-xs font-semibold text-slate-400">Atlet</span></span>
+                            <span class="block text-[11px] text-slate-500 mt-1">Total Kontingen: ${s.total_contingent} Orang</span>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition">
+                            <div class="flex items-center justify-between text-slate-500 mb-2">
+                                <span class="text-xs font-bold uppercase tracking-wider">Cabang Olahraga</span>
+                                <div class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
+                                    <i data-lucide="trophy" class="w-5 h-5"></i>
+                                </div>
+                            </div>
+                            <span class="text-2xl font-black text-slate-900">${s.total_sports} <span class="text-xs font-semibold text-slate-400">Cabor</span></span>
+                            <span class="block text-[11px] text-slate-500 mt-1">${s.total_events_participated} Nomor Diikuti</span>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition">
+                            <div class="flex items-center justify-between text-slate-500 mb-2">
+                                <span class="text-xs font-bold uppercase tracking-wider">Pertandingan Hari Ini</span>
+                                <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
+                                    <i data-lucide="calendar" class="w-5 h-5"></i>
+                                </div>
+                            </div>
+                            <span class="text-2xl font-black text-slate-900">${ongoingMatches} <span class="text-xs font-semibold text-amber-600">Berlangsung</span></span>
+                            <span class="block text-[11px] text-slate-500 mt-1">${db.fixtures.length} Total Jadwal Aktif</span>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition">
+                            <div class="flex items-center justify-between text-slate-500 mb-2">
+                                <span class="text-xs font-bold uppercase tracking-wider">Kendala Belum Selesai</span>
+                                <div class="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold">
+                                    <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+                                </div>
+                            </div>
+                            <span class="text-2xl font-black text-rose-600">${pendingIssues} <span class="text-xs font-semibold text-slate-400">Kasus</span></span>
+                            <span class="block text-[11px] text-slate-500 mt-1">Perlu Tindak Lanjut Posko</span>
+                        </div>
+                    </div>
+
+                    <!-- Configurable Medals & Targets Section -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Medal Recap -->
+                        <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+                            <div>
+                                <div class="flex justify-between items-center mb-4">
+                                    <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                        <i data-lucide="award" class="w-4 h-4 text-amber-500"></i> Rekapitulasi Medali Sementara
+                                    </h3>
+                                    <button onclick="switchTab('medals')" class="text-xs text-blue-600 hover:underline font-semibold">Detail &rarr;</button>
+                                </div>
+                                <div class="grid grid-cols-3 gap-3 text-center my-3">
+                                    <div class="bg-amber-50 border border-amber-200/60 p-3 rounded-xl">
+                                        <span class="block text-[10px] font-bold text-amber-700 uppercase">Emas</span>
+                                        <span class="text-xl font-extrabold text-amber-600">${totalGold}</span>
+                                    </div>
+                                    <div class="bg-slate-100 border border-slate-200 p-3 rounded-xl">
+                                        <span class="block text-[10px] font-bold text-slate-600 uppercase">Perak</span>
+                                        <span class="text-xl font-extrabold text-slate-700">${totalSilver}</span>
+                                    </div>
+                                    <div class="bg-orange-50 border border-orange-200/60 p-3 rounded-xl">
+                                        <span class="block text-[10px] font-bold text-orange-700 uppercase">Perunggu</span>
+                                        <span class="text-xl font-extrabold text-orange-600">${totalBronze}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/60 text-xs flex justify-between items-center mt-4">
+                                <span class="text-slate-600 font-medium">Target & Potensi Medali Admin:</span>
+                                <span class="font-bold text-indigo-600">${s.target_gold_potential} Emas / ${s.target_silver_bronze_potential} Potensi</span>
+                            </div>
+                        </div>
+
+                        <!-- Recent Fixtures & Results -->
+                        <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm lg:col-span-2">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                    <i data-lucide="calendar" class="w-4 h-4 text-blue-600"></i> Jadwal & Pertandingan Terbaru
+                                </h3>
+                                <button onclick="switchTab('fixtures')" class="text-xs text-blue-600 hover:underline font-semibold">Lihat Semua &rarr;</button>
+                            </div>
+                            <div class="space-y-3">
+                                ${db.fixtures.slice(0, 3).map(f => `
+                                    <div class="p-3 rounded-xl border border-slate-100 bg-slate-50/60 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                        <div>
+                                            <span class="text-[10px] font-bold text-blue-600 uppercase">${f.date} • ${f.time} WIB</span>
+                                            <h4 class="font-bold text-xs text-slate-900 mt-0.5">${f.event_name}</h4>
+                                            <p class="text-[11px] text-slate-500">${f.team_a} vs ${f.team_b} • <span class="italic">${f.venue}</span></p>
+                                        </div>
+                                        <span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${f.status === 'Selesai' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-blue-50 text-blue-600 border border-blue-200'}">
+                                            ${f.status}
+                                        </span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- MODULE 2: MASTER DATA ---
+        function renderMasterData(db) {
+            const s = db.app_settings;
+            return `
+                <div class="space-y-6">
+                    <!-- Configurable Specs Banner -->
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-base">Rincian Kontingen KONI Kota Bandung</h3>
+                            <p class="text-xs text-slate-500 mt-1">Angka di bawah ini dapat disunting sesuai pemutakhiran data resmi.</p>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <button onclick="openModal('manage_athletes_form')" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow transition flex items-center gap-2">
+                                <i data-lucide="user-plus" class="w-4 h-4"></i> Kelola Atlet (Tambah / Kurang)
+                            </button>
+                            <button onclick="openModal('settings_form')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow transition flex items-center gap-2">
+                                <i data-lucide="settings" class="w-4 h-4"></i> Sunting Angka
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Statistics Breakdown Grid -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
+                            <span class="text-[10px] text-slate-400 uppercase tracking-wider block font-semibold">Cabang Olahraga</span>
+                            <span class="text-xl font-black text-slate-800 mt-1 block">${s.total_sports}</span>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
+                            <span class="text-[10px] text-slate-400 uppercase tracking-wider block font-semibold">Nomor Pertandingan</span>
+                            <span class="text-xl font-black text-blue-600 mt-1 block">${s.total_events_participated} <span class="text-[10px] font-normal text-slate-500">/ ${s.total_events_overall}</span></span>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
+                            <span class="text-[10px] text-slate-400 uppercase tracking-wider block font-semibold">Total Atlet</span>
+                            <span class="text-xl font-black text-emerald-600 mt-1 block">${s.total_athletes}</span>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
+                            <span class="text-[10px] text-slate-400 uppercase tracking-wider block font-semibold">Pelatih</span>
+                            <span class="text-xl font-black text-slate-800 mt-1 block">${s.total_coaches}</span>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
+                            <span class="text-[10px] text-slate-400 uppercase tracking-wider block font-semibold">Official / Mekanik</span>
+                            <span class="text-xl font-black text-slate-800 mt-1 block">${s.total_officials}</span>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
+                            <span class="text-[10px] text-slate-400 uppercase tracking-wider block font-semibold">Manajer</span>
+                            <span class="text-xl font-black text-slate-800 mt-1 block">${s.total_managers}</span>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center col-span-2 md:col-span-1">
+                            <span class="text-[10px] text-slate-400 uppercase tracking-wider block font-semibold">Total Kontingen</span>
+                            <span class="text-xl font-black text-indigo-600 mt-1 block">${s.total_contingent}</span>
+                        </div>
+                    </div>
+
+                    <!-- Athletes Table -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                            <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                <i data-lucide="database" class="w-4 h-4 text-blue-600"></i> Roster & Data Master Kontingen (${db.athletes.length} Atlet Terdaftar)
+                            </h4>
+                            <div class="flex gap-2">
+                                <button onclick="exportData('csv')" class="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5">
+                                    <i data-lucide="download" class="w-3.5 h-3.5"></i> Ekspor CSV
+                                </button>
+                                <button onclick="openModal('manage_athletes_form')" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5">
+                                    <i data-lucide="user-plus" class="w-3.5 h-3.5"></i> Tambah Atlet
+                                </button>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                                        <th class="p-3">ID / Nama Atlet</th>
+                                        <th class="p-3">Cabang Olahraga</th>
+                                        <th class="p-3">Jenis Kelamin</th>
+                                        <th class="p-3">Klub / Pengcab Asal</th>
+                                        <th class="p-3">Status</th>
+                                        <th class="p-3 text-right">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 text-xs text-slate-700">
+                                    ${db.athletes.map(a => {
+                                        const sport = db.sports.find(s => s.id === a.sport_id);
+                                        return `
+                                            <tr class="hover:bg-slate-50/80 transition">
+                                                <td class="p-3 font-medium text-slate-900 flex items-center gap-2">
+                                                    <div class="w-7 h-7 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-[10px]">
+                                                        ${a.name.charAt(0)}
+                                                    </div>
+                                                    <div>
+                                                        ${a.name}
+                                                        <span class="block text-[10px] text-slate-400 font-normal">ID: #${a.id}</span>
+                                                    </div>
+                                                </td>
+                                                <td class="p-3">${sport ? sport.name : 'Umum'}</td>
+                                                <td class="p-3">
+                                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${a.gender === 'Putra' ? 'bg-indigo-50 text-indigo-600' : 'bg-pink-50 text-pink-600'}">
+                                                        ${a.gender}
+                                                    </span>
+                                                </td>
+                                                <td class="p-3 text-slate-500">${a.club}</td>
+                                                <td class="p-3">
+                                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-600">
+                                                        ${a.status || 'Aktif'}
+                                                    </span>
+                                                </td>
+                                                <td class="p-3 text-right">
+                                                    <button onclick="quickRemoveAthlete(${a.id})" class="text-rose-600 hover:text-rose-800 p-1 rounded hover:bg-rose-50" title="Keluarkan Atlet">
+                                                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- MODULE 3: FIXTURES & RESULTS ---
+        function renderFixtures(db) {
+            return `
+                <div class="space-y-6">
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-base">Jadwal & Hasil Pertandingan PORPROV 2026</h3>
+                            <p class="text-xs text-slate-500 mt-1">Pencatatan real-time jadwal, venue, daerah tuan rumah, dan hasil pertandingan.</p>
+                        </div>
+                        <button onclick="openModal('fixture_form')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow transition flex items-center gap-2">
+                            <i data-lucide="plus" class="w-4 h-4"></i> Catat Jadwal / Hasil Baru
+                        </button>
+                    </div>
+
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                                        <th class="p-3">Waktu & Tanggal</th>
+                                        <th class="p-3">Nomor / Pertandingan</th>
+                                        <th class="p-3">Atlet / Tim</th>
+                                        <th class="p-3">Venue & Lokasi</th>
+                                        <th class="p-3">Status</th>
+                                        <th class="p-3">Hasil / Skor</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 text-xs text-slate-700">
+                                    ${db.fixtures.map(f => `
+                                        <tr class="hover:bg-slate-50/80 transition">
+                                            <td class="p-3 font-medium text-slate-900">
+                                                ${f.date}
+                                                <span class="block text-[10px] text-slate-400 font-normal">${f.time} WIB</span>
+                                            </td>
+                                            <td class="p-3 font-bold text-slate-800">${f.event_name}</td>
+                                            <td class="p-3 text-slate-600">${f.team_a} vs ${f.team_b}</td>
+                                            <td class="p-3 text-slate-500">${f.venue}</td>
+                                            <td class="p-3">
+                                                <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${f.status === 'Selesai' ? 'bg-emerald-50 text-emerald-600' : f.status === 'Berlangsung' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'}">
+                                                    ${f.status}
+                                                </span>
+                                            </td>
+                                            <td class="p-3 font-medium text-slate-900">${f.result}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- MODULE 4: POSTS MONITORING & DAILY REPORTS ---
+        function renderPosts(db) {
+            return `
+                <div class="space-y-6">
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-base">Monitoring Posko & Hasil Pengawasan Lapangan</h3>
+                            <p class="text-xs text-slate-500 mt-1">Pengawasan, pengendalian, koordinasi, dan pencatatan hasil monitoring oleh Tim Monev.</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="openModal('field_monitoring_form')" class="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-semibold shadow transition flex items-center gap-2">
+                                <i data-lucide="clipboard-pen" class="w-4 h-4"></i> Form Hasil Monitoring
+                            </button>
+                            <button onclick="openModal('monitoring_form')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow transition flex items-center gap-2">
+                                <i data-lucide="file-plus" class="w-4 h-4"></i> Kirim Laporan Posko
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        ${db.posts.map(p => `
+                            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                                <div>
+                                    <span class="text-[10px] font-bold text-blue-600 uppercase tracking-wider block mb-1">POSKO KORWIL</span>
+                                    <h4 class="font-bold text-sm text-slate-900">${p.name}</h4>
+                                    <p class="text-xs text-slate-500 mt-1"><i data-lucide="map-pin" class="w-3.5 h-3.5 inline"></i> ${p.location}</p>
+                                    <p class="text-xs text-slate-600 mt-2 font-medium">Koordinator: ${p.coordinator}</p>
+                                    <p class="text-xs text-slate-500">Telp: ${p.contact}</p>
+                                </div>
+                                <div class="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center">
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-600">${p.status}</span>
+                                    <button onclick="openModal('field_monitoring_form')" class="text-xs text-violet-600 hover:underline font-semibold">Inspeksi Monev</button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mt-6">
+                        <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                            <h4 class="font-bold text-slate-800 text-sm">Riwayat Laporan & Hasil Pengawasan Lapangan</h4>
+                            <button onclick="openModal('field_monitoring_form')" class="text-xs text-violet-600 font-semibold hover:underline">+ Tambah Hasil Monev</button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                                        <th class="p-3">Foto Kunjungan</th>
+                                        <th class="p-3">Tanggal & Petugas Monev</th>
+                                        <th class="p-3">Lokasi / Cabor Dinilai</th>
+                                        <th class="p-3">Skor & Aspek Penilaian</th>
+                                        <th class="p-3">Catatan & Temuan</th>
+                                        <th class="p-3">Rekomendasi Tindak Lanjut</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 text-xs text-slate-700">
+                                    ${db.daily_reports.map(r => `
+                                        <tr class="hover:bg-slate-50/80 transition">
+                                            <td class="p-3">
+                                                <img src="${r.photo || 'https://placehold.co/100x75/e2e8f0/475569?text=No+Foto'}" alt="Foto Kunjungan" class="w-16 h-12 object-cover rounded-lg border border-slate-200 shadow-xs cursor-pointer hover:scale-105 transition" onclick="window.open('${r.photo || ''}', '_blank')">
+                                            </td>
+                                            <td class="p-3 font-medium text-slate-900">
+                                                ${r.date}
+                                                <span class="block text-[10px] text-slate-400 font-normal">${r.reporter}</span>
+                                            </td>
+                                            <td class="p-3 font-bold text-slate-800">Posko Korwil #${r.post_id}</td>
+                                            <td class="p-3">
+                                                <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-violet-50 text-violet-600">
+                                                    ${r.status === 'Selesai' ? 'Baik Sekali (A)' : 'Cukup / Perlu Atensi'}
+                                                </span>
+                                            </td>
+                                            <td class="p-3 text-slate-700">${r.constraints}</td>
+                                            <td class="p-3 text-slate-600 font-medium">${r.followup}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- MODULE 5: MEDALS ---
+        function renderMedals(db) {
+            const s = db.app_settings;
+            return `
+                <div class="space-y-6">
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-base">Perolehan Medali & Konfigurasi Target</h3>
+                            <p class="text-xs text-slate-500 mt-1">${s.target_label}</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="openModal('medal_form')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow transition flex items-center gap-2">
+                                <i data-lucide="award" class="w-4 h-4"></i> Catat Medali Baru
+                            </button>
+                            <button onclick="openModal('settings_form')" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-semibold shadow transition">
+                                Konfigurasi Target (171/76)
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-gradient-to-tr from-amber-500 to-yellow-400 p-6 rounded-2xl text-white shadow-md">
+                            <span class="text-xs uppercase font-bold tracking-wider opacity-80">Target & Potensi Medali Emas</span>
+                            <span class="text-4xl font-black mt-2 block">${s.target_gold_potential}</span>
+                            <span class="text-xs mt-1 block opacity-90">Label Terverifikasi Admin Kontingen</span>
+                        </div>
+                        <div class="bg-gradient-to-tr from-slate-700 to-slate-900 p-6 rounded-2xl text-white shadow-md">
+                            <span class="text-xs uppercase font-bold tracking-wider opacity-80">Potensi Medali Lainnya (Perak / Perunggu)</span>
+                            <span class="text-4xl font-black mt-2 block">${s.target_silver_bronze_potential}</span>
+                            <span class="text-xs mt-1 block opacity-90">Label Terverifikasi Admin Kontingen</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div class="p-4 border-b border-slate-100 bg-slate-50/50">
+                            <h4 class="font-bold text-slate-800 text-sm">Daftar Medali Kontingen KONI Kota Bandung</h4>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                                        <th class="p-3">Tanggal / Cabor</th>
+                                        <th class="p-3">Nomor Pertandingan</th>
+                                        <th class="p-3">Nama Atlet</th>
+                                        <th class="p-3">Jenis Medali</th>
+                                        <th class="p-3">Status Verifikasi</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 text-xs text-slate-700">
+                                    ${db.medals.map(m => {
+                                        const sport = db.sports.find(s => s.id === m.sport_id);
+                                        return `
+                                            <tr class="hover:bg-slate-50/80 transition">
+                                                <td class="p-3 font-medium text-slate-900">
+                                                    ${m.date}
+                                                    <span class="block text-[10px] text-slate-400 font-normal">${sport ? sport.name : 'Umum'}</span>
+                                                </td>
+                                                <td class="p-3 font-bold text-slate-800">${m.event_name}</td>
+                                                <td class="p-3 text-slate-600">${m.athlete_name}</td>
+                                                <td class="p-3">
+                                                    <span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${m.type === 'Emas' ? 'bg-amber-100 text-amber-700' : m.type === 'Perak' ? 'bg-slate-200 text-slate-700' : 'bg-orange-100 text-orange-700'}">
+                                                        Medali ${m.type}
+                                                    </span>
+                                                </td>
+                                                <td class="p-3">
+                                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${m.verified ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}">
+                                                        ${m.verified ? 'Terverifikasi PB' : 'Belum Diverifikasi'}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- MODULE 6: MEDICAL & WELFARE ---
+        function renderMedical(db) {
+            const isAuthorized = currentUser.id === 'medical' || currentUser.id === 'admin' || currentUser.id === 'central';
+            if (!isAuthorized) {
+                return `
+                    <div class="bg-white p-12 rounded-2xl border border-slate-200 text-center max-w-lg mx-auto my-12 shadow-sm">
+                        <div class="w-16 h-16 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i data-lucide="lock" class="w-8 h-8"></i>
+                        </div>
+                        <h3 class="font-bold text-slate-800 text-base">Akses Catatan Medis Terbatas</h3>
+                        <p class="text-xs text-slate-500 mt-2 leading-relaxed">
+                            Informasi kesehatan dan rekam medis atlet bersifat rahasia dan hanya dapat diakses oleh Tim Medis Resmi, Admin Sistem, dan Pengurus Pusat KONI.
+                        </p>
+                        <button onclick="switchRole('MEDICAL')" class="mt-6 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow transition">
+                            Masuk sebagai Tim Medis
+                        </button>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="space-y-6">
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-base">Modul Medis & Kesejahteraan Atlet (Akses Terbatas)</h3>
+                            <p class="text-xs text-slate-500 mt-1">Pencatatan klinis cedera, tingkat urgensi, penanganan, dan rujukan.</p>
+                        </div>
+                        <button onclick="openModal('medical_form')" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow transition flex items-center gap-2">
+                            <i data-lucide="plus" class="w-4 h-4"></i> Catat Kasus Medis Baru
+                        </button>
+                    </div>
+
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                                        <th class="p-3">Waktu & Petugas</th>
+                                        <th class="p-3">Nama Atlet / Cabor</th>
+                                        <th class="p-3">Urgensi & Diagnosis</th>
+                                        <th class="p-3">Penanganan Medis</th>
+                                        <th class="p-3">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 text-xs text-slate-700">
+                                    ${db.medical_cases.map(m => `
+                                        <tr class="hover:bg-slate-50/80 transition">
+                                            <td class="p-3 font-medium text-slate-900">
+                                                ${m.date}
+                                                <span class="block text-[10px] text-slate-400 font-normal">${m.officer}</span>
+                                            </td>
+                                            <td class="p-3 font-bold text-slate-800">${m.athlete_name} <span class="block text-[10px] text-slate-500 font-normal">${m.sport}</span></td>
+                                            <td class="p-3">
+                                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${m.urgency === 'Ringan' ? 'bg-blue-50 text-blue-600' : 'bg-rose-50 text-rose-600'}">
+                                                    ${m.urgency} - ${m.diagnosis}
+                                                </span>
+                                            </td>
+                                            <td class="p-3 text-slate-600">${m.treatment}</td>
+                                            <td class="p-3">
+                                                <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-600">
+                                                    ${m.status}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- MODULE 7: ACCOMMODATION & TRANSPORT ---
+        function renderAccommodation(db) {
+            return `
+                <div class="space-y-6">
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-base">Monitoring Penginapan & Transportasi Kontingen</h3>
+                            <p class="text-xs text-slate-500 mt-1">Pemantauan akomodasi di 12 daerah tuan rumah dan kesiapan armada transportasi.</p>
+                        </div>
+                        <button onclick="openModal('accommodation_form')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow transition flex items-center gap-2">
+                            <i data-lucide="home" class="w-4 h-4"></i> Inspeksi Penginapan Baru
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        ${db.accommodations.map(a => `
+                            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                                <div>
+                                    <span class="text-[10px] font-bold text-blue-600 uppercase tracking-wider block mb-1">${a.region}</span>
+                                    <h4 class="font-bold text-sm text-slate-900">${a.name}</h4>
+                                    <p class="text-xs text-slate-500 mt-2">Kapasitas: <span class="font-bold text-slate-700">${a.filled} / ${a.capacity} Orang</span></p>
+                                    <p class="text-xs text-slate-500 mt-1">Transportasi: <span class="font-bold text-slate-700">${a.transport}</span></p>
+                                </div>
+                                <div class="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-600">${a.status}</span>
+                                    <button onclick="openModal('accommodation_form')" class="text-blue-600 hover:underline font-semibold">Perbarui</button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- MODULE 4B: VISIT PHOTOS GALLERY & INPUT ---
+        function renderVisitPhotos(db) {
+            // Collecting all visit photos from daily reports or dedicated gallery storage
+            const photos = db.daily_reports.filter(r => r.photo);
+            return `
+                <div class="space-y-6">
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-base">Galeri & Input Foto Hasil Kunjungan Lapangan</h3>
+                            <p class="text-xs text-slate-500 mt-1">Dokumentasi visual kunjungan posko, venue, dan akomodasi lengkap dengan keterangan detail.</p>
+                        </div>
+                        <button onclick="openModal('field_monitoring_form')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow transition flex items-center gap-2">
+                            <i data-lucide="camera" class="w-4 h-4"></i> Tambah Foto Kunjungan Baru
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        ${photos.map((p, idx) => `
+                            <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition flex flex-col justify-between">
+                                <div>
+                                    <div class="relative h-48 overflow-hidden bg-slate-100">
+                                        <img src="${p.photo}" alt="Foto Kunjungan" class="w-full h-full object-cover cursor-pointer hover:scale-105 transition duration-300" onclick="window.open('${p.photo}', '_blank')">
+                                        <span class="absolute top-3 left-3 px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-900/80 text-white backdrop-blur-sm">
+                                            Posko Korwil #${p.post_id}
+                                        </span>
+                                    </div>
+                                    <div class="p-4 space-y-2">
+                                        <div class="flex justify-between items-center text-[10px] text-slate-400 font-semibold">
+                                            <span>📅 ${p.date}</span>
+                                            <span>👤 ${p.reporter}</span>
+                                        </div>
+                                        <h4 class="font-bold text-slate-900 text-xs">${p.activity}</h4>
+                                        <p class="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                                            <span class="font-semibold text-slate-700 block mb-0.5">Catatan & Temuan:</span>
+                                            ${p.constraints}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="p-4 pt-0 flex justify-between items-center text-xs">
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-600">Status: ${p.status}</span>
+                                    <span class="text-slate-400 text-[10px]">ID: #${p.id}</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- MODULE 8: PROTESTS & VIOLATIONS ---
+        function renderProtests(db) {
+            return `
+                <div class="space-y-6">
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-base">Pencatatan Protes & Pelanggaran Pertandingan</h3>
+                            <p class="text-xs text-slate-500 mt-1">Pencatatan sengketa teknis, protes resmi wasit, dan keputusan dewan hakim.</p>
+                        </div>
+                        <button onclick="openModal('protest_form')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow transition flex items-center gap-2">
+                            <i data-lucide="shield-alert" class="w-4 h-4"></i> Ajukan Protes Baru
+                        </button>
+                    </div>
+
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                                        <th class="p-3">Cabang Olahraga & Partai</th>
+                                        <th class="p-3">Uraian Protes</th>
+                                        <th class="p-3">Pelapor</th>
+                                        <th class="p-3">Status Penanganan</th>
+                                        <th class="p-3">Keputusan / Penyelesaian</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 text-xs text-slate-700">
+                                    ${db.protests.map(p => `
+                                        <tr class="hover:bg-slate-50/80 transition">
+                                            <td class="p-3 font-bold text-slate-900">${p.sport} <span class="block text-[10px] text-slate-400 font-normal">${p.match_ref}</span></td>
+                                            <td class="p-3 text-slate-700">${p.description}</td>
+                                            <td class="p-3 text-slate-500">${p.reporter}</td>
+                                            <td class="p-3"><span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-600">${p.status}</span></td>
+                                            <td class="p-3 text-slate-600 font-medium">${p.resolution}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- MODULE 9: REPORTS & EXPORTS ---
+        function renderReports(db) {
+            return `
+                <div class="space-y-6">
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-base">Laporan & Ekspor Data Kontingen</h3>
+                            <p class="text-xs text-slate-500 mt-1">Unduh rekapitulasi lengkap dalam format CSV atau cetak laporan PDF resmi.</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="exportData('csv')" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-semibold shadow transition flex items-center gap-2">
+                                <i data-lucide="download" class="w-4 h-4"></i> Ekspor CSV Kontingen
+                            </button>
+                            <button onclick="exportData('pdf')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow transition flex items-center gap-2">
+                                <i data-lucide="file-text" class="w-4 h-4"></i> Cetak Laporan PDF
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                        <h4 class="font-bold text-slate-800 text-sm mb-4">Audit Log Perubahan Sistem (Audit Trail)</h4>
+                        <div class="space-y-2 max-h-96 overflow-y-auto custom-scrollbar pr-2">
+                            ${db.audit_logs.map(log => `
+                                <div class="p-3 rounded-xl bg-slate-50 border border-slate-100 flex justify-between items-center text-xs">
+                                    <div>
+                                        <span class="font-bold text-slate-900">${log.user}</span>
+                                        <p class="text-slate-600 mt-0.5">${log.action}</p>
+                                    </div>
+                                    <span class="text-[10px] text-slate-400 font-mono">${log.timestamp}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- MODULE 10: DATABASE DOCUMENTATION & ERD ---
+        function renderDatabaseDoc(db) {
+            return `
+                <div class="space-y-6">
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                        <h3 class="font-bold text-slate-800 text-base">Dokumentasi Skema Relasional & ERD Database</h3>
+                        <p class="text-xs text-slate-500 mt-1">Penjelasan struktur tabel relasional PostgreSQL / MySQL untuk sistem monitoring KONI Kota Bandung PORPROV XV Jabar 2026.</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                            <h4 class="font-bold text-slate-900 text-xs text-blue-600 uppercase tracking-wider mb-2">1. Tabel Pengguna & Hak Akses</h4>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                <b>users, roles, user_roles</b>: Mengatur autentikasi multi-peran (Admin, Pengurus Pusat, Koordinator Posko, Tim Teknis, Tim Medis, Viewer) dengan enkripsi password (bcrypt) dan pencatatan audit log secara berkala.
+                            </p>
+                        </div>
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                            <h4 class="font-bold text-slate-900 text-xs text-blue-600 uppercase tracking-wider mb-2">2. Tabel Master Kontingen & Atlet</h4>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                <b>sports, events, athletes, teams, officials</b>: Menyimpan rincian 78 cabor, 911 nomor pertandingan, 1.366 atlet, serta pelatih, official, dan manajer dengan relasi foreign key terstandarisasi.
+                            </p>
+                        </div>
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                            <h4 class="font-bold text-slate-900 text-xs text-blue-600 uppercase tracking-wider mb-2">3. Tabel Posko & Laporan</h4>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                <b>host_regions, venues, posts, post_personnel, daily_reports, issues</b>: Mengelola posko di Bekasi, Bogor, Depok, dan Bandung beserta log kegiatan harian dan eskalasi kendala.
+                            </p>
+                        </div>
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                            <h4 class="font-bold text-slate-900 text-xs text-blue-600 uppercase tracking-wider mb-2">4. Tabel Medis & Kesejahteraan</h4>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                <b>medical_cases, accommodations, transport_assignments, protests</b>: Menyimpan rekam medis dengan pembatasan akses ketat, jadwal penginapan di 12 daerah, dan penanganan protes sengketa.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- MODAL FORMS BUILDER ---
+        function renderModalContainer() {
+            const existingModal = document.getElementById('dynamic-modal-overlay');
+            if (existingModal) existingModal.remove();
+
+            if (!modalState.isOpen) return '';
+
+            const db = dbManager.getDB();
+            let title = '';
+            let formContent = '';
+            let submitAction = '';
+
+            if (modalState.type === 'field_monitoring_form') {
+                title = 'Form Hasil Monitoring & Evaluasi Lapangan (Tim Monev)';
+                submitAction = 'handleFieldMonitoringSubmit(event)';
+                formContent = `
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Pilih Posko / Venue</label>
+                                <select id="fm_post_id" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs">
+                                    ${db.posts.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Penilaian Umum</label>
+                                <select id="fm_rating" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs">
+                                    <option value="Sangat Baik">Sangat Baik (A)</option>
+                                    <option value="Baik">Baik (B)</option>
+                                    <option value="Cukup / Perlu Perbaikan">Cukup / Perlu Perbaikan (C)</option>
+                                    <option value="Kritis">Kritis (Perlu Tindakan Cepat)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Temuan Lapangan / Observasi</label>
+                            <textarea id="fm_findings" rows="3" placeholder="Uraikan hasil pemantauan kondisi venue, konsumsi, kesiapan atlet, dan fasilitas..." class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs" required></textarea>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Rekomendasi Tindak Lanjut</label>
+                                <input type="text" id="fm_recommendation" placeholder="Misal: Penambahan suplai air mineral" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs" required>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">URL Foto Kunjungan / Dokumentasi</label>
+                                <input type="text" id="fm_photo" placeholder="https://placehold.co/600x400..." value="https://placehold.co/600x400/8b5cf6/ffffff?text=Inspeksi+Terbaru" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs" required>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (modalState.type === 'manage_athletes_form') {
+                title = 'Kelola Atlet (Tambah atau Kurang Roster Cabor)';
+                submitAction = 'handleManageAthletesSubmit(event)';
+                formContent = `
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Aksi Pengelolaan</label>
+                            <select id="ma_action" onchange="document.getElementById('div_add_fields').classList.toggle('hidden', this.value !== 'add'); document.getElementById('div_remove_fields').classList.toggle('hidden', this.value !== 'remove');" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs">
+                                <option value="add">Tambah Atlet Baru ke Cabor</option>
+                                <option value="remove">Keluarkan / Kurangi Atlet dari Roster</option>
+                            </select>
+                        </div>
+                        <div id="div_add_fields" class="space-y-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Nama Lengkap Atlet</label>
+                                <input type="text" id="ma_name" placeholder="Nama Atlet" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs">
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">Cabang Olahraga</label>
+                                    <select id="ma_sport_id" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs">
+                                        ${db.sports.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">Jenis Kelamin</label>
+                                    <select id="ma_gender" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs">
+                                        <option value="Putra">Putra</option>
+                                        <option value="Putri">Putri</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Klub / Klub Asal</label>
+                                <input type="text" id="ma_club" value="KONI Kota Bandung" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs">
+                            </div>
+                        </div>
+                        <div id="div_remove_fields" class="hidden">
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Pilih Atlet untuk Dikeluarkan</label>
+                            <select id="ma_athlete_id" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs">
+                                ${db.athletes.map(a => `<option value="${a.id}">${a.name} (ID: #${a.id})</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                `;
+            } else if (modalState.type === 'monitoring_form') {
+                title = 'Form Laporan Posko & Aktivitas Harian';
+                submitAction = 'handleMonitoringSubmit(event)';
+                formContent = `
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Posko Terkait</label>
+                            <select id="mf_post_id" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs">
+                                ${db.posts.map(p => `<option value="${p.id}">${p.name} (${p.location})</option>`).join('')}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Aktivitas / Laporan Lapangan</label>
+                            <textarea id="mf_activity" rows="3" placeholder="Uraikan kegiatan pemantauan hari ini..." class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs" required></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Kendala / Masalah (Jika ada)</label>
+                            <input type="text" id="mf_constraints" placeholder="Misal: Transportasi terlambat 10 menit" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs">
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Status Kendala</label>
+                                <select id="mf_status" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs">
+                                    <option value="Baru">Baru</option>
+                                    <option value="Diproses">Diproses</option>
+                                    <option value="Selesai">Selesai</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Tindak Lanjut</label>
+                                <input type="text" id="mf_followup" value="Koordinasi dengan panitia" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs">
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (modalState.type === 'fixture_form') {
+                title = 'Form Catat Jadwal & Hasil Pertandingan';
+                submitAction = 'handleFixtureSubmit(event)';
+                formContent = `
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Cabang Olahraga</label>
+                            <select id="ff_sport_id" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs">
+                                ${db.sports.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Nama Nomor / Pertandingan</label>
+                            <input type="text" id="ff_event_name" placeholder="Misal: Final Lari 200m Putra" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs" required>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Tim / Atlet A (Bandung)</label>
+                                <input type="text" id="ff_team_a" value="Atlet Bandung" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Tim / Atlet B (Lawan)</label>
+                                <input type="text" id="ff_team_b" value="Atlet Lawan" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Tanggal</label>
+                                <input type="date" id="ff_date" value="2026-11-10" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Waktu</label>
+                                <input type="text" id="ff_time" value="10:00" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Venue</label>
+                            <select id="ff_venue" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs">
+                                ${db.venues.map(v => `<option value="${v.name}">${v.name} (${v.region})</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Status</label>
+                                <select id="ff_status" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs">
+                                    <option value="Terjadwal">Terjadwal</option>
+                                    <option value="Berlangsung">Berlangsung</option>
+                                    <option value="Selesai">Selesai</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Hasil / Skor</label>
+                                <input type="text" id="ff_result" value="Belum Mulai" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs">
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (modalState.type === 'medal_form') {
+                title = 'Form Pencatatan Medali Kontingen';
+                submitAction = 'handleMedalSubmit(event)';
+                formContent = `
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Cabang Olahraga</label>
+                            <select id="med_sport_id" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs">
+                                ${db.sports.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Nomor Pertandingan</label>
+                            <input type="text" id="med_event_name" placeholder="Misal: Kelas A Putra" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Nama Atlet Peraih</label>
+                            <input type="text" id="med_athlete_name" placeholder="Nama Atlet" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs" required>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Jenis Medali</label>
+                                <select id="med_type" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs">
+                                    <option value="Emas">Emas</option>
+                                    <option value="Perak">Perak</option>
+                                    <option value="Perunggu">Perunggu</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Status Verifikasi</label>
+                                <select id="med_verified" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs">
+                                    <option value="true">Terverifikasi PB</option>
+                                    <option value="false">Belum Terverifikasi</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (modalState.type === 'medical_form') {
+                title = 'Form Catat Kasus Medis & Kesehatan';
+                submitAction = 'handleMedicalSubmit(event)';
+                formContent = `
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Nama Atlet</label>
+                            <input type="text" id="med_ath" placeholder="Nama Atlet" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs" required>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Cabang Olahraga</label>
+                                <input type="text" id="med_sp" placeholder="Cabor" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs" required>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Tingkat Urgensi</label>
+                                <select id="med_urg" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs">
+                                    <option value="Ringan">Ringan</option>
+                                    <option value="Sedang">Sedang</option>
+                                    <option value="Darurat">Darurat</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Diagnosis / Cedera</label>
+                            <input type="text" id="med_diag" placeholder="Misal: Kram otot / Keseleo" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Penanganan & Tindakan</label>
+                            <input type="text" id="med_treat" placeholder="Pemberian terapi / obat" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs" required>
+                        </div>
+                    </div>
+                `;
+            } else if (modalState.type === 'accommodation_form') {
+                title = 'Form Inspeksi Kelayakan Penginapan Atlet';
+                submitAction = 'handleAccommodationSubmit(event)';
+                formContent = `
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Pilih Lokasi Penginapan</label>
+                            <select id="acc_name" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs">
+                                ${db.accommodations.map(a => `<option value="${a.name}">${a.name} (${a.region})</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Jumlah Penghuni Saat Ini</label>
+                                <input type="number" id="acc_filled" value="200" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Status Kelayakan</label>
+                                <select id="acc_status" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs">
+                                    <option value="Layak & Nyaman">Layak & Nyaman</option>
+                                    <option value="Perlu Perbaikan Fasilitas">Perlu Perbaikan Fasilitas</option>
+                                    <option value="Kritis / Butuh Tindakan">Kritis / Butuh Tindakan</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Catatan Inspeksi / Transport</label>
+                            <input type="text" id="acc_notes" value="Armada bus operasional siap siaga" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs">
+                        </div>
+                    </div>
+                `;
+            } else if (modalState.type === 'protest_form') {
+                title = 'Form Pengajuan Protes & Sengketa Pertandingan';
+                submitAction = 'handleProtestSubmit(event)';
+                formContent = `
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Cabang Olahraga</label>
+                            <input type="text" id="pro_sport" placeholder="Misal: Pencak Silat" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Nomor / Partai Pertandingan</label>
+                            <input type="text" id="pro_match" placeholder="Misal: Partai #12" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Uraian Protes</label>
+                            <textarea id="pro_desc" rows="3" placeholder="Jelaskan dasar protes..." class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs" required></textarea>
+                        </div>
+                    </div>
+                `;
+            } else if (modalState.type === 'settings_form') {
+                title = 'Konfigurasi Angka Kontingen & Target Medali';
+                submitAction = 'handleSettingsSubmit(event)';
+                formContent = `
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Total Atlet</label>
+                                <input type="number" id="set_athletes" value="${db.app_settings.total_athletes}" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Total Kontingen</label>
+                                <input type="number" id="set_contingent" value="${db.app_settings.total_contingent}" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Target Emas (Potensi)</label>
+                                <input type="number" id="set_gold" value="${db.app_settings.target_gold_potential}" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Potensi Medali Lain</label>
+                                <input type="number" id="set_other" value="${db.app_settings.target_silver_bronze_potential}" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs">
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            return `
+                <div id="dynamic-modal-overlay" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs animate-fade-in p-4">
+                    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden">
+                        <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <h3 class="font-bold text-slate-900 text-sm">${title}</h3>
+                            <button onclick="closeModal()" class="w-8 h-8 rounded-full bg-slate-200/80 hover:bg-slate-300 flex items-center justify-center text-slate-700 font-bold text-xs">✕</button>
+                        </div>
+                        <form onsubmit="${submitAction}" class="p-5 space-y-4">
+                            ${formContent}
+                            <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                                <button type="button" onclick="closeModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold">Batal</button>
+                                <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow">Simpan Data</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+        }
+
+        function handleFieldMonitoringSubmit(e) {
+            e.preventDefault();
+            const db = dbManager.getDB();
+            db.daily_reports.unshift({
+                id: Date.now(),
+                post_id: parseInt(document.getElementById('fm_post_id').value),
+                reporter: currentUser.name + ' (Tim Monev)',
+                date: new Date().toISOString().substring(0, 10),
+                activity: `Inspeksi Tim Monev: Rating [${document.getElementById('fm_rating').value}]`,
+                constraints: document.getElementById('fm_findings').value,
+                status: document.getElementById('fm_rating').value === 'Kritis' ? 'Diproses' : 'Selesai',
+                followup: document.getElementById('fm_recommendation').value,
+                photo: document.getElementById('fm_photo').value
+            });
+            dbManager.saveDB(db);
+            dbManager.logAudit(currentUser, 'Mengirim hasil monitoring & evaluasi lapangan baru dengan foto kunjungan.');
+            closeModal();
+            showToast('Hasil monitoring lapangan & foto berhasil disimpan!', 'success');
+            renderApp();
+        }
+
+        function handleManageAthletesSubmit(e) {
+            e.preventDefault();
+            const db = dbManager.getDB();
+            const action = document.getElementById('ma_action').value;
+            const sportId = parseInt(document.getElementById('ma_sport_id').value);
+            const sport = db.sports.find(s => s.id === sportId);
+
+            if (action === 'add') {
+                const name = document.getElementById('ma_name').value;
+                if (!name) { showToast('Nama atlet wajib diisi.', 'error'); return; }
+                db.athletes.unshift({
+                    id: Date.now(),
+                    name,
+                    sport_id: sportId,
+                    gender: document.getElementById('ma_gender').value,
+                    club: document.getElementById('ma_club').value,
+                    status: 'Aktif'
+                });
+                if (sport) sport.athletes_count++;
+                db.app_settings.total_athletes++;
+                db.app_settings.total_contingent++;
+                dbManager.saveDB(db);
+                dbManager.logAudit(currentUser, `Menambahkan atlet: ${name} ke cabor ${sport ? sport.name : ''}`);
+                closeModal();
+                showToast(`Atlet ${name} berhasil ditambahkan!`, 'success');
+            } else {
+                const athleteId = parseInt(document.getElementById('ma_athlete_id').value);
+                const idx = db.athletes.findIndex(a => a.id === athleteId);
+                if (idx !== -1) {
+                    const removed = db.athletes.splice(idx, 1)[0];
+                    if (sport && sport.athletes_count > 0) sport.athletes_count--;
+                    db.app_settings.total_athletes = Math.max(0, db.app_settings.total_athletes - 1);
+                    db.app_settings.total_contingent = Math.max(0, db.app_settings.total_contingent - 1);
+                    dbManager.saveDB(db);
+                    dbManager.logAudit(currentUser, `Mengeluarkan atlet: ${removed.name}`);
+                    closeModal();
+                    showToast(`Atlet ${removed.name} berhasil dikeluarkan.`, 'success');
+                }
+            }
+            renderApp();
+        }
+
+        function quickRemoveAthlete(athleteId) {
+            if (!confirm('Apakah Anda yakin ingin mengeluarkan atlet ini?')) return;
+            const db = dbManager.getDB();
+            const idx = db.athletes.findIndex(a => a.id === athleteId);
+            if (idx !== -1) {
+                const removed = db.athletes.splice(idx, 1)[0];
+                const sport = db.sports.find(s => s.id === removed.sport_id);
+                if (sport && sport.athletes_count > 0) sport.athletes_count--;
+                db.app_settings.total_athletes = Math.max(0, db.app_settings.total_athletes - 1);
+                db.app_settings.total_contingent = Math.max(0, db.app_settings.total_contingent - 1);
+                dbManager.saveDB(db);
+                dbManager.logAudit(currentUser, `Mengeluarkan atlet: ${removed.name}`);
+                showToast(`Atlet ${removed.name} berhasil dikeluarkan.`, 'success');
+                renderApp();
+            }
+        }
+
+        function handleMonitoringSubmit(e) {
+            e.preventDefault();
+            const db = dbManager.getDB();
+            db.daily_reports.unshift({
+                id: Date.now(),
+                post_id: parseInt(document.getElementById('mf_post_id').value),
+                reporter: currentUser.name,
+                date: new Date().toISOString().substring(0, 10),
+                activity: document.getElementById('mf_activity').value,
+                constraints: document.getElementById('mf_constraints').value || 'Tidak ada kendala',
+                status: document.getElementById('mf_status').value,
+                followup: document.getElementById('mf_followup').value
+            });
+            dbManager.saveDB(db);
+            dbManager.logAudit(currentUser, 'Mengirim laporan posko harian baru.');
+            closeModal();
+            showToast('Laporan posko berhasil dikirim!', 'success');
+            renderApp();
+        }
+
+        function handleFixtureSubmit(e) {
+            e.preventDefault();
+            const db = dbManager.getDB();
+            db.fixtures.unshift({
+                id: Date.now(),
+                sport_id: parseInt(document.getElementById('ff_sport_id').value),
+                event_name: document.getElementById('ff_event_name').value,
+                team_a: document.getElementById('ff_team_a').value,
+                team_b: document.getElementById('ff_team_b').value,
+                date: document.getElementById('ff_date').value,
+                time: document.getElementById('ff_time').value,
+                venue: document.getElementById('ff_venue').value,
+                status: document.getElementById('ff_status').value,
+                result: document.getElementById('ff_result').value,
+                source: currentUser.name
+            });
+            dbManager.saveDB(db);
+            dbManager.logAudit(currentUser, `Menambahkan jadwal pertandingan baru.`);
+            closeModal();
+            showToast('Jadwal pertandingan berhasil dicatat!', 'success');
+            renderApp();
+        }
+
+        function handleMedalSubmit(e) {
+            e.preventDefault();
+            const db = dbManager.getDB();
+            db.medals.unshift({
+                id: Date.now(),
+                sport_id: parseInt(document.getElementById('med_sport_id').value),
+                event_name: document.getElementById('med_event_name').value,
+                athlete_name: document.getElementById('med_athlete_name').value,
+                type: document.getElementById('med_type').value,
+                date: new Date().toISOString().substring(0, 10),
+                verified: document.getElementById('med_verified').value === 'true'
+            });
+            dbManager.saveDB(db);
+            dbManager.logAudit(currentUser, 'Mencatat perolehan medali baru.');
+            closeModal();
+            showToast('Perolehan medali berhasil dicatat!', 'success');
+            renderApp();
+        }
+
+        function handleMedicalSubmit(e) {
+            e.preventDefault();
+            const db = dbManager.getDB();
+            db.medical_cases.unshift({
+                id: Date.now(),
+                athlete_name: document.getElementById('med_ath').value,
+                sport: document.getElementById('med_sp').value,
+                urgency: document.getElementById('med_urg').value,
+                diagnosis: document.getElementById('med_diag').value,
+                treatment: document.getElementById('med_treat').value,
+                officer: currentUser.name,
+                date: new Date().toISOString().replace('T', ' ').substring(0, 16),
+                status: 'Pemulihan'
+            });
+            dbManager.saveDB(db);
+            dbManager.logAudit(currentUser, 'Mencatat kasus medis baru.');
+            closeModal();
+            showToast('Catatan medis berhasil disimpan!', 'success');
+            renderApp();
+        }
+
+        function handleAccommodationSubmit(e) {
+            e.preventDefault();
+            const db = dbManager.getDB();
+            const name = document.getElementById('acc_name').value;
+            const acc = db.accommodations.find(a => a.name === name);
+            if (acc) {
+                acc.filled = parseInt(document.getElementById('acc_filled').value);
+                acc.status = document.getElementById('acc_status').value;
+            }
+            dbManager.saveDB(db);
+            dbManager.logAudit(currentUser, `Memperbarui status penginapan ${name}`);
+            closeModal();
+            showToast('Inspeksi penginapan berhasil disimpan!', 'success');
+            renderApp();
+        }
+
+        function handleProtestSubmit(e) {
+            e.preventDefault();
+            const db = dbManager.getDB();
+            db.protests.unshift({
+                id: Date.now(),
+                sport: document.getElementById('pro_sport').value,
+                match_ref: document.getElementById('pro_match').value,
+                description: document.getElementById('pro_desc').value,
+                reporter: currentUser.name,
+                status: 'Menunggu Keputusan',
+                resolution: 'Dalam investigasi dewan hakim'
+            });
+            dbManager.saveDB(db);
+            dbManager.logAudit(currentUser, 'Mengajukan protes pertandingan baru.');
+            closeModal();
+            showToast('Protes pertandingan berhasil diajukan!', 'success');
+            renderApp();
+        }
+
+        function handleSettingsSubmit(e) {
+            e.preventDefault();
+            const db = dbManager.getDB();
+            db.app_settings.total_athletes = parseInt(document.getElementById('set_athletes').value);
+            db.app_settings.total_contingent = parseInt(document.getElementById('set_contingent').value);
+            db.app_settings.target_gold_potential = parseInt(document.getElementById('set_gold').value);
+            db.app_settings.target_silver_bronze_potential = parseInt(document.getElementById('set_other').value);
+            dbManager.saveDB(db);
+            dbManager.logAudit(currentUser, 'Memperbarui rincian statistik & target kontingen.');
+            closeModal();
+            showToast('Konfigurasi kontingen berhasil diperbarui!', 'success');
+            renderApp();
+        }
+
+        function exportData(format) {
+            const db = dbManager.getDB();
+            if (format === 'csv') {
+                let csv = 'ID,Nama Atlet,Cabang Olahraga,Klub Asal,Status\n';
+                db.athletes.forEach(a => {
+                    csv += `${a.id},"${a.name}",${a.sport_id},"${a.club}",${a.status}\n`;
+                });
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'kontingen_koni_bandung_porprov_2026.csv';
+                a.click();
+                showToast('Ekspor CSV berhasil diunduh!', 'success');
+            } else if (format === 'pdf') {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(16);
+                doc.text("Laporan Resmi Kontingen KONI Kota Bandung", 14, 20);
+                doc.setFontSize(11);
+                doc.setFont("helvetica", "normal");
+                doc.text("PORPROV XV Jawa Barat 2026", 14, 28);
+                doc.text(`Total Atlet: ${db.app_settings.total_athletes}`, 14, 40);
+                doc.text(`Total Cabang Olahraga: ${db.app_settings.total_sports}`, 14, 48);
+                doc.text(`Target Emas: ${db.app_settings.target_gold_potential}`, 14, 56);
+                doc.save("laporan_koni_bandung_porprov_2026.pdf");
+                showToast('Laporan PDF berhasil dicetak!', 'success');
+            }
+        }
+
+        function renderTabContent(db, tabId) {
+            switch (tabId) {
+                case 'dashboard': return renderDashboard(db);
+                case 'master': return renderMasterData(db);
+                case 'fixtures': return renderFixtures(db);
+                case 'posts': return renderPosts(db);
+                case 'visit_photos': return renderVisitPhotos(db);
+                case 'medals': return renderMedals(db);
+                case 'medical': return renderMedical(db);
+                case 'accommodation': return renderAccommodation(db);
+                case 'protests': return renderProtests(db);
+                case 'reports': return renderReports(db);
+                case 'database_doc': return renderDatabaseDoc(db);
+                default: return renderDashboard(db);
+            }
+        }
+
+        window.onload = function() {
+            renderApp();
+        };
+    </script>
+</body>
+</html>
