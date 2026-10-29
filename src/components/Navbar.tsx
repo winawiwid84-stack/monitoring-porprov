@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useAuth, DEMO_CREDENTIALS } from '../context/AuthContext.tsx';
 import { UserRole } from '../types/index.ts';
-import { Shield, UserCheck, Key, LogOut, ChevronDown, Bell, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { UserCheck, Key, LogOut, ChevronDown, Bell, CheckCircle2, AlertTriangle, Server } from 'lucide-react';
 import { Modal } from './Modal.tsx';
 import { api } from '../lib/api.ts';
+import { FirebaseSyncBadge } from './FirebaseSyncBadge.tsx';
+import { LaravelDeployModal } from './LaravelDeployModal.tsx';
 
 interface NavbarProps {
   unresolvedCount: number;
@@ -14,6 +16,7 @@ export const Navbar: React.FC<NavbarProps> = ({ unresolvedCount, onNavigateToIss
   const { user, switchDemoRole, logout } = useAuth();
   const [showRoleMenu, setShowRoleMenu] = useState(false);
   const [showPassModal, setShowPassModal] = useState(false);
+  const [showLaravelModal, setShowLaravelModal] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [passMessage, setPassMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
@@ -79,8 +82,12 @@ export const Navbar: React.FC<NavbarProps> = ({ unresolvedCount, onNavigateToIss
           <div className="flex items-center justify-between gap-4">
             {/* Brand Logo & Name */}
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 via-teal-600 to-blue-600 flex items-center justify-center shadow-md ring-2 ring-emerald-400/30">
-                <Shield className="w-6 h-6 text-white" />
+              <div className="w-11 h-11 rounded-xl bg-white p-1 flex items-center justify-center shadow-md ring-2 ring-emerald-400/30 overflow-hidden shrink-0">
+                <img
+                  src="/assets/aistudio/logo_koni_kota_bdg_19156272.png"
+                  alt="Logo KONI Kota Bandung"
+                  className="w-full h-full object-contain"
+                />
               </div>
               <div>
                 <div className="flex items-center gap-2">
@@ -99,6 +106,20 @@ export const Navbar: React.FC<NavbarProps> = ({ unresolvedCount, onNavigateToIss
 
             {/* Right Action & Role Switcher */}
             <div className="flex items-center gap-2 sm:gap-3">
+              {/* Deploy Laravel Guide Button */}
+              <button
+                onClick={() => setShowLaravelModal(true)}
+                className="flex items-center gap-1.5 bg-red-600/30 hover:bg-red-600/40 text-red-200 border border-red-500/50 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition shadow-xs"
+                title="Panduan & Kode Deploy Backend Laravel"
+              >
+                <Server className="w-3.5 h-3.5 text-rose-400" />
+                <span className="hidden sm:inline">Deploy Laravel</span>
+                <span className="sm:hidden">Laravel</span>
+              </button>
+
+              {/* Firebase Cloud Sync Badge */}
+              <FirebaseSyncBadge />
+
               {/* Unresolved issues indicator button */}
               {unresolvedCount > 0 && (
                 <button
@@ -255,6 +276,12 @@ export const Navbar: React.FC<NavbarProps> = ({ unresolvedCount, onNavigateToIss
           </div>
         </form>
       </Modal>
+
+      {/* Laravel Deployment Blueprint & Guide Modal */}
+      <LaravelDeployModal
+        isOpen={showLaravelModal}
+        onClose={() => setShowLaravelModal(false)}
+      />
     </>
   );
 };

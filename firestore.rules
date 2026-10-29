@@ -1,0 +1,174 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net: Default Deny All
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isBootstrappedAdmin() {
+      return isSignedIn() && request.auth.token.email == 'winawiwid84@gmail.com';
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function hasUserDoc() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isAdmin() {
+      return isBootstrappedAdmin() || (hasUserDoc() && getUserData().role in ['admin', 'pengurus_pusat']);
+    }
+
+    function isMedicalStaff() {
+      return isAdmin() || (hasUserDoc() && getUserData().role == 'tim_medis');
+    }
+
+    function isTechnicalStaff() {
+      return isAdmin() || (hasUserDoc() && getUserData().role in ['tim_teknis', 'tim_monev']);
+    }
+
+    function isPoskoCoordinator() {
+      return isAdmin() || (hasUserDoc() && getUserData().role == 'koordinator_posko');
+    }
+
+    // Connection testing
+    match /test/{testId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isSignedIn() && request.auth.uid == userId
+        && isValidId(userId)
+        && incoming().keys().hasAll(['userId', 'email', 'fullName', 'role', 'createdAt'])
+        && incoming().keys().hasOnly(['userId', 'email', 'fullName', 'role', 'assignedPostId', 'createdAt', 'updatedAt'])
+        && incoming().userId == request.auth.uid
+        && incoming().email is string && incoming().email.size() <= 128
+        && incoming().fullName is string && incoming().fullName.size() <= 128
+        && (incoming().role == 'viewer' || isBootstrappedAdmin())
+        && incoming().createdAt == request.time;
+      allow update: if isSignedIn() && isValidId(userId)
+        && (request.auth.uid == userId || isAdmin())
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().fullName is string && incoming().fullName.size() <= 128
+        && (isAdmin() || incoming().role == existing().role);
+      allow delete: if isAdmin() && isValidId(userId);
+    }
+
+    // Sports Collection
+    match /sports/{sportId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin() && isValidId(sportId);
+    }
+
+    // Fixtures Collection
+    match /fixtures/{fixtureId} {
+      allow read: if true;
+      allow create, delete: if isTechnicalStaff() && isValidId(fixtureId);
+      allow update: if (isTechnicalStaff() || isPoskoCoordinator()) && isValidId(fixtureId)
+        && incoming().id == existing().id
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time;
+    }
+
+    // Medals Collection
+    match /medals/{medalId} {
+      allow read: if true;
+      allow create, delete: if (isAdmin() || isTechnicalStaff()) && isValidId(medalId);
+      allow update: if (isAdmin() || isTechnicalStaff()) && isValidId(medalId)
+        && incoming().id == existing().id
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time;
+    }
+
+    // Daily Reports Collection
+    match /daily_reports/{reportId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(reportId)
+        && incoming().keys().hasAll(['id', 'postId', 'authorId', 'reportDate', 'title', 'content', 'createdAt'])
+        && incoming().keys().hasOnly(['id', 'postId', 'postName', 'authorId', 'authorName', 'reportDate', 'title', 'content', 'fieldCondition', 'escalationNeeded', 'createdAt', 'updatedAt'])
+        && incoming().id == reportId
+        && incoming().authorId == request.auth.uid
+        && incoming().title is string && incoming().title.size() <= 256
+        && incoming().content is string && incoming().content.size() <= 10000
+        && incoming().createdAt == request.time;
+      allow update: if isSignedIn() && isValidId(reportId)
+        && (existing().authorId == request.auth.uid || isAdmin())
+        && incoming().id == existing().id
+        && incoming().authorId == existing().authorId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time;
+      allow delete: if (isAdmin() || (isSignedIn() && existing().authorId == request.auth.uid)) && isValidId(reportId);
+    }
+
+    // Issues Collection
+    match /issues/{issueId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(issueId)
+        && incoming().keys().hasAll(['id', 'postId', 'title', 'description', 'urgency', 'status', 'authorId', 'createdAt'])
+        && incoming().keys().hasOnly(['id', 'postId', 'sportId', 'title', 'description', 'urgency', 'status', 'authorId', 'authorName', 'followUpNotes', 'resolvedAt', 'createdAt', 'updatedAt'])
+        && incoming().id == issueId
+        && incoming().authorId == request.auth.uid
+        && incoming().title is string && incoming().title.size() <= 256
+        && incoming().description is string && incoming().description.size() <= 5000
+        && incoming().createdAt == request.time;
+      allow update: if isSignedIn() && isValidId(issueId)
+        && (existing().authorId == request.auth.uid || isAdmin() || isPoskoCoordinator())
+        && incoming().id == existing().id
+        && incoming().authorId == existing().authorId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time;
+      allow delete: if isAdmin() && isValidId(issueId);
+    }
+
+    // Medical Cases Collection - Strictly Guarded
+    match /medical_cases/{caseId} {
+      allow get: if isMedicalStaff() && isValidId(caseId);
+      allow list: if isMedicalStaff();
+      allow create: if isMedicalStaff() && isValidId(caseId)
+        && incoming().keys().hasAll(['id', 'athleteId', 'athleteName', 'incidentType', 'urgency', 'diagnosis', 'medicId', 'status', 'createdAt'])
+        && incoming().keys().hasOnly(['id', 'athleteId', 'athleteName', 'sportId', 'sportName', 'incidentType', 'urgency', 'diagnosis', 'actionTaken', 'referralLocation', 'medicId', 'medicName', 'status', 'createdAt', 'updatedAt'])
+        && incoming().id == caseId
+        && incoming().medicId == request.auth.uid
+        && incoming().diagnosis is string && incoming().diagnosis.size() <= 2000
+        && incoming().createdAt == request.time;
+      allow update: if isMedicalStaff() && isValidId(caseId)
+        && incoming().id == existing().id
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time;
+      allow delete: if isAdmin() && isValidId(caseId);
+    }
+
+    // System Settings Collection
+    match /settings/{settingKey} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidId(settingKey);
+    }
+  }
+}

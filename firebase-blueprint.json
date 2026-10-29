@@ -1,0 +1,197 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile with role-based permissions and assigned post",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 128 },
+        "fullName": { "type": "string", "maxLength": 128 },
+        "role": { "type": "string", "enum": ["admin", "pengurus_pusat", "koordinator_posko", "tim_monev", "tim_teknis", "tim_medis", "viewer"] },
+        "assignedPostId": { "type": "string", "maxLength": 64 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "email", "fullName", "role", "createdAt"]
+    },
+    "Sport": {
+      "title": "Sport",
+      "description": "Cabang olahraga participant data and medal targets",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "code": { "type": "string", "maxLength": 32 },
+        "name": { "type": "string", "maxLength": 128 },
+        "category": { "type": "string", "maxLength": 64 },
+        "totalEvents": { "type": "integer" },
+        "joinedEvents": { "type": "integer" },
+        "targetGold": { "type": "integer" },
+        "targetSilver": { "type": "integer" },
+        "targetBronze": { "type": "integer" },
+        "targetVerified": { "type": "integer" },
+        "targetNotes": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "code", "name", "createdAt"]
+    },
+    "DailyReport": {
+      "title": "DailyReport",
+      "description": "Posko daily monitoring report, field conditions, and documentation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "postId": { "type": "string", "maxLength": 64 },
+        "postName": { "type": "string", "maxLength": 128 },
+        "authorId": { "type": "string", "maxLength": 128 },
+        "authorName": { "type": "string", "maxLength": 128 },
+        "reportDate": { "type": "string", "maxLength": 32 },
+        "title": { "type": "string", "maxLength": 256 },
+        "content": { "type": "string", "maxLength": 10000 },
+        "fieldCondition": { "type": "string", "enum": ["kondusif", "terkendala_ringan", "terkendala_kritis", "siaga"] },
+        "escalationNeeded": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "postId", "authorId", "reportDate", "title", "content", "createdAt"]
+    },
+    "Issue": {
+      "title": "Issue",
+      "description": "Operational problem/kendala requiring escalation and resolution tracking",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "postId": { "type": "string", "maxLength": 64 },
+        "sportId": { "type": "string", "maxLength": 64 },
+        "title": { "type": "string", "maxLength": 256 },
+        "description": { "type": "string", "maxLength": 5000 },
+        "urgency": { "type": "string", "enum": ["rendah", "sedang", "tinggi", "kritis"] },
+        "status": { "type": "string", "enum": ["baru", "diproses", "menunggu", "selesai"] },
+        "authorId": { "type": "string", "maxLength": 128 },
+        "authorName": { "type": "string", "maxLength": 128 },
+        "followUpNotes": { "type": "string", "maxLength": 5000 },
+        "resolvedAt": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "postId", "title", "description", "urgency", "status", "authorId", "createdAt"]
+    },
+    "MedicalCase": {
+      "title": "MedicalCase",
+      "description": "Confidential health/injury records of athletes accessible only to authorized medical personnel",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "athleteId": { "type": "string", "maxLength": 64 },
+        "athleteName": { "type": "string", "maxLength": 128 },
+        "sportId": { "type": "string", "maxLength": 64 },
+        "sportName": { "type": "string", "maxLength": 128 },
+        "incidentType": { "type": "string", "maxLength": 128 },
+        "urgency": { "type": "string", "enum": ["ringan", "sedang", "berat", "gawat_darurat"] },
+        "diagnosis": { "type": "string", "maxLength": 2000 },
+        "actionTaken": { "type": "string", "maxLength": 2000 },
+        "referralLocation": { "type": "string", "maxLength": 256 },
+        "medicId": { "type": "string", "maxLength": 128 },
+        "medicName": { "type": "string", "maxLength": 128 },
+        "status": { "type": "string", "enum": ["dalam_penanganan", "observasi", "dirujuk", "pulih_siap_tanding", "selesai"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "athleteId", "athleteName", "incidentType", "urgency", "diagnosis", "medicId", "status", "createdAt"]
+    },
+    "MedalRecord": {
+      "title": "MedalRecord",
+      "description": "Official medal achievement records for KONI Kota Bandung contingency",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "sportId": { "type": "string", "maxLength": 64 },
+        "sportName": { "type": "string", "maxLength": 128 },
+        "eventId": { "type": "string", "maxLength": 64 },
+        "eventName": { "type": "string", "maxLength": 128 },
+        "athleteName": { "type": "string", "maxLength": 256 },
+        "medalType": { "type": "string", "enum": ["emas", "perak", "perunggu"] },
+        "wonDate": { "type": "string", "maxLength": 32 },
+        "isVerified": { "type": "boolean" },
+        "verifiedBy": { "type": "string", "maxLength": 128 },
+        "notes": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "sportId", "sportName", "medalType", "wonDate", "createdAt"]
+    },
+    "MatchFixture": {
+      "title": "MatchFixture",
+      "description": "Sports match schedule, venue info, and live results",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "sportId": { "type": "string", "maxLength": 64 },
+        "sportName": { "type": "string", "maxLength": 128 },
+        "eventId": { "type": "string", "maxLength": 64 },
+        "eventName": { "type": "string", "maxLength": 128 },
+        "matchRound": { "type": "string", "maxLength": 64 },
+        "opponent": { "type": "string", "maxLength": 128 },
+        "matchDate": { "type": "string", "maxLength": 32 },
+        "matchTime": { "type": "string", "maxLength": 16 },
+        "venueName": { "type": "string", "maxLength": 128 },
+        "regionName": { "type": "string", "maxLength": 128 },
+        "status": { "type": "string", "enum": ["terjadwal", "berlangsung", "selesai", "ditunda", "dibatalkan"] },
+        "scoreHome": { "type": "string", "maxLength": 32 },
+        "scoreAway": { "type": "string", "maxLength": 32 },
+        "resultNotes": { "type": "string", "maxLength": 2000 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "sportId", "matchDate", "status", "createdAt"]
+    },
+    "SystemSetting": {
+      "title": "SystemSetting",
+      "description": "App settings, target labels verification, and contingent config",
+      "type": "object",
+      "properties": {
+        "settingKey": { "type": "string", "maxLength": 64 },
+        "value": { "type": "string", "maxLength": 5000 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "updatedBy": { "type": "string", "maxLength": 128 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["settingKey", "value", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User accounts with assigned roles and posko associations"
+    },
+    "/sports/{sportId}": {
+      "schema": "Sport",
+      "description": "Cabor master data and medal targets"
+    },
+    "/daily_reports/{reportId}": {
+      "schema": "DailyReport",
+      "description": "Daily posko monitoring and field activity reports"
+    },
+    "/issues/{issueId}": {
+      "schema": "Issue",
+      "description": "Operational issues and resolution tracking across posko"
+    },
+    "/medical_cases/{caseId}": {
+      "schema": "MedicalCase",
+      "description": "Strictly guarded athlete medical cases and treatment logs"
+    },
+    "/medals/{medalId}": {
+      "schema": "MedalRecord",
+      "description": "Official contingent medal tallies and verification statuses"
+    },
+    "/fixtures/{fixtureId}": {
+      "schema": "MatchFixture",
+      "description": "Match fixtures, schedules, and scores"
+    },
+    "/settings/{settingKey}": {
+      "schema": "SystemSetting",
+      "description": "System configurations, medal target labels, and event parameters"
+    }
+  }
+}

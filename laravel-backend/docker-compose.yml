@@ -1,0 +1,53 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: koni-bandung-laravel-api:latest
+    container_name: koni_laravel_api
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: koni_bandung_porprov2026
+      DB_USERNAME: koni_user
+      DB_PASSWORD: KoniBandungSecret2026!
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./storage:/var/www/html/storage
+    networks:
+      - koni-network
+
+  db:
+    image: mysql:8.0
+    container_name: koni_mysql_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: koni_bandung_porprov2026
+      MYSQL_USER: koni_user
+      MYSQL_PASSWORD: KoniBandungSecret2026!
+      MYSQL_ROOT_PASSWORD: RootSecureKoniPassword2026!
+    ports:
+      - "3306:3306"
+    volumes:
+      - koni_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+    networks:
+      - koni-network
+
+networks:
+  koni-network:
+    driver: bridge
+
+volumes:
+  koni_mysql_data:

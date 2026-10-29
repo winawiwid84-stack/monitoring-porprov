@@ -16,7 +16,7 @@ import { AuditLogView } from './views/AuditLogView.tsx';
 import { PengaturanView } from './views/PengaturanView.tsx';
 import { AiChatWidget } from './components/AiChatWidget.tsx';
 import { api } from './lib/api.ts';
-import { Shield, Sparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 
 function AppContent() {
   const { user, loading } = useAuth();
@@ -44,8 +44,12 @@ function AppContent() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-900 flex flex-col items-center justify-center text-white p-4">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 via-teal-600 to-blue-600 flex items-center justify-center mb-4 shadow-xl ring-4 ring-emerald-500/20 animate-pulse">
-          <Shield className="w-8 h-8 text-white" />
+        <div className="w-16 h-16 rounded-2xl bg-white p-1.5 flex items-center justify-center mb-4 shadow-xl ring-4 ring-emerald-500/20 overflow-hidden shrink-0">
+          <img
+            src="/assets/aistudio/logo_koni_kota_bdg_19156272.png"
+            alt="Logo KONI Kota Bandung"
+            className="w-full h-full object-contain"
+          />
         </div>
         <h2 className="text-xl font-black tracking-tight text-white flex items-center gap-2">
           KONI KOTA BANDUNG

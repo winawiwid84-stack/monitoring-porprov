@@ -13,13 +13,18 @@ import {
   Layers,
   CheckCircle,
   Copy,
+  Box,
+  Terminal,
+  ExternalLink,
 } from 'lucide-react';
+import { LaravelDeployModal } from '../components/LaravelDeployModal.tsx';
 
 export const PengaturanView: React.FC = () => {
   const { user } = useAuth();
   const [settings, setSettings] = useState<any[]>([]);
   const [downloading, setDownloading] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [showLaravelModal, setShowLaravelModal] = useState(false);
 
   useEffect(() => {
     api.getSettings().then(setSettings).catch(console.error);
@@ -75,13 +80,40 @@ export const PengaturanView: React.FC = () => {
         )}
       </div>
 
+      {/* Special Laravel Deployment Banner */}
+      <div className="bg-gradient-to-r from-red-900 via-rose-900 to-slate-900 text-white p-5 rounded-2xl border border-red-700/50 shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2">
+            <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-red-600 text-white rounded-md">
+              Laravel Backend Ready
+            </span>
+            <span className="text-xs text-rose-300 font-mono">/laravel-backend</span>
+          </div>
+          <h3 className="text-base font-bold text-white flex items-center gap-2">
+            <Server className="w-4 h-4 text-rose-400" />
+            <span>Paket Migrasi & API Laravel 11/12 Tersedia</span>
+          </h3>
+          <p className="text-xs text-rose-200/90 max-w-2xl leading-relaxed">
+            Sistem telah dilengkapi kode backend Laravel lengkap mencakup 24 tabel migrasi relasional, Model Eloquent, REST Controller, Seeder KONI Kota Bandung, serta konfigurasi Docker Compose & Nginx.
+          </p>
+        </div>
+
+        <button
+          onClick={() => setShowLaravelModal(true)}
+          className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 shadow-sm"
+        >
+          <Box className="w-4 h-4" />
+          <span>Buka Panduan & Kode Deploy Laravel</span>
+        </button>
+      </div>
+
       {/* Grid of Tech Stack & Architecture */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
           <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
             <Server className="w-5 h-5" />
           </div>
-          <h3 className="font-bold text-slate-900 text-sm">Arsitektur & Backend API</h3>
+          <h3 className="font-bold text-slate-900 text-sm">Arsitektur Backend</h3>
           <p className="text-xs text-slate-600 leading-relaxed">
             Express.js full-stack pada Node.js dengan Vite middleware terintegrasi di port 3000. REST API modular mencakup autentikasi JWT, validasi input ketat, dan logging audit trail.
           </p>
@@ -91,9 +123,19 @@ export const PengaturanView: React.FC = () => {
           <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center font-bold">
             <Database className="w-5 h-5" />
           </div>
-          <h3 className="font-bold text-slate-900 text-sm">Database Relasional SQLite</h3>
+          <h3 className="font-bold text-slate-900 text-sm">Relasional SQLite</h3>
           <p className="text-xs text-slate-600 leading-relaxed">
             24 tabel relasional dengan foreign key terindeks (<code className="bg-slate-100 px-1 rounded text-slate-800">PRAGMA foreign_keys = ON</code>), constraint unik, validasi check status, timestamp otomatis, dan integritas ACID.
+          </p>
+        </div>
+
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+          <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold">
+            <Layers className="w-5 h-5" />
+          </div>
+          <h3 className="font-bold text-slate-900 text-sm">Firebase Cloud & Auth</h3>
+          <p className="text-xs text-slate-600 leading-relaxed">
+            Cloud Firestore Enterprise (<code className="bg-slate-100 px-1 rounded text-slate-800">asia-southeast1</code>) dengan Zero-Trust Security Rules, Google SSO login, dan sinkronisasi real-time multi-posko terenkripsi.
           </p>
         </div>
 
@@ -278,6 +320,12 @@ export const PengaturanView: React.FC = () => {
           </li>
         </ul>
       </div>
+
+      {/* Laravel Deployment Blueprint & Guide Modal */}
+      <LaravelDeployModal
+        isOpen={showLaravelModal}
+        onClose={() => setShowLaravelModal(false)}
+      />
     </div>
   );
 };

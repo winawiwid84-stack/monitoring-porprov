@@ -1,5 +1,29 @@
 const TOKEN_KEY = 'koni_bandung_auth_token';
 
+// Support connecting directly to external Laravel API or local dev server
+const API_BASE_URL = (
+  (import.meta as any).env?.VITE_API_URL ||
+  (import.meta as any).env?.VITE_LARAVEL_API_URL ||
+  ''
+).replace(/\/+$/, '');
+
+export function getApiBaseUrl(): string {
+  return API_BASE_URL;
+}
+
+export function resolveApiUrl(path: string): string {
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path;
+  }
+  if (!API_BASE_URL) {
+    return path;
+  }
+  if (API_BASE_URL.endsWith('/api') && path.startsWith('/api/')) {
+    return `${API_BASE_URL}${path.substring(4)}`;
+  }
+  return `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`;
+}
+
 export function getStoredToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
 }
@@ -24,7 +48,8 @@ async function fetchWithAuth(url: string, options: RequestInit = {}) {
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  const response = await fetch(url, { ...options, headers });
+  const fullUrl = resolveApiUrl(url);
+  const response = await fetch(fullUrl, { ...options, headers });
   
   if (response.status === 401) {
     // If unauthorized, token expired or invalid
